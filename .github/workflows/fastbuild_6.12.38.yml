@@ -288,6 +288,20 @@ jobs:
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "ksuver=$KSU_VERSION" >> $GITHUB_OUTPUT
             sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
+
+            sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Kbuild
+            
+            # 修复 KernelSU 在 6.12 kbuild 下的双重前缀：6.12 的 $(src) 已含 $(srctree)，
+            # 上游的 $(srctree)/$(src) 会算成 ../../drivers/kernelsu，导致 include/ 下的
+            # klog.h 与 uapi/app_profile.h 找不到
+            if ! grep -qF 'KSU_KERNEL_DIR := $(srctree)/$(src)' kernel/Kbuild; then
+              echo '::error::KernelSU Kbuild 里找不到 KSU_KERNEL_DIR := $(srctree)/$(src)，上游可能改版了，请检查'
+              exit 1
+            fi
+            sed -i 's|KSU_KERNEL_DIR := \$(srctree)/\$(src)|KSU_KERNEL_DIR := $(src)|' kernel/Kbuild
+            grep -n 'KSU_KERNEL_DIR' kernel/Kbuild
+
+            
           else
             echo "已选择无内置KernelSU模式，跳过KernelSU配置..."
           fi
